@@ -1,0 +1,97 @@
+name: Build and deploy to gh-pages branch
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (optional)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install & build (Node / Jekyll / Hugo / static)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Detecting project type..."
+
+          if [ -f package.json ]; then
+            echo "Node project detected"
+            if [ -f package-lock.json ]; then
+              npm ci
+            elif [ -f yarn.lock ]; then
+              npm install
+            else
+              npm install
+            fi
+            if npm run | grep -q " build"; then
+              npm run build
+            else
+              echo "No npm build script; skipping npm build"
+            fi
+
+          elif [ -f Gemfile ] || [ -f _config.yml ]; then
+            echo "Jekyll detected"
+            sudo apt-get update
+            sudo apt-get install -y ruby-full build-essential zlib1g-dev
+            export GEM_HOME="$HOME/gems"
+            export PATH="$GEM_HOME/bin:$PATH"
+            gem install bundler
+            bundle install
+            bundle exec jekyll build
+
+          elif [ -f config.toml ] || [ -d archetypes ]; then
+            echo "Hugo detected"
+            sudo apt-get update
+            sudo apt-get install -y hugo
+            hugo -v
+
+          else
+            echo "No build system detected; assuming static files in repo root"
+          fi
+
+      - name: Determine publish directory
+        id: detect
+        run: |
+          set -euo pipefail
+          PUBLISH_DIR=""
+          for d in build dist public docs _site __site; do
+            if [ -d "$d" ]; then
+              PUBLISH_DIR="$d"
+              break
+            fi
+          done
+
+          if [ -z "$PUBLISH_DIR" ] && [ -f index.html ]; then
+            PUBLISH_DIR="."
+          fi
+
+          if [ -z "$PUBLISH_DIR" ]; then
+            echo "No publish dir detected; creating empty public/"
+            mkdir -p public
+            PUBLISH_DIR="public"
+          fi
+
+          echo "publish_dir=$PUBLISH_DIR" >> $GITHUB_OUTPUT
+          echo "Detected publish_dir: $PUBLISH_DIR"
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ${{ steps.detect.outputs.publish_dir }}
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
