@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const sidebarSections: SidebarSection[] = [
     defaultOpen: true,
     links: [
       { to: "/glossary", label: "HR Glossary", icon: FileText },
+      { to: "https://bbraun-my.sharepoint.com/personal/angelica_nieto_bbraun_com/_layouts/15/Doc.aspx?sourcedoc={db088374-ab37-4bca-a9fd-79478ff7edc3}&action=edit&wd=target%28Quick%20Notes.one%7Ca767ec8c-ea7f-499a-be33-b1c6e4fd9067%2FQA%20HR%20TOPICS%7C491e14c0-f66c-4246-9172-463d51acc41d%2F%29&wdorigin=NavigationUrl", label: "Q&A HR Topics", icon: MessageCircle },
       { to: "/call-flow", label: "Call Flow Diagram", icon: FileText },
       { to: "/security-protocol", label: "Security Protocol", icon: Clipboard },
       { to: "/decision-tree", label: "Decision Tree", icon: HelpCircle },
@@ -92,6 +94,30 @@ function SidebarSectionComponent({ section }: { section: SidebarSection }) {
           {section.links.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.to;
+            const isExternal = link.to.startsWith("http");
+
+            if (isExternal) {
+              return (
+                <a
+                  key={link.to}
+                  href={link.to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-all",
+                    "text-sidebar-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="flex-1">{link.label}</span>
+                  {link.count !== undefined && (
+                    <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
+                      {link.count}
+                    </span>
+                  )}
+                </a>
+              );
+            }
 
             return (
               <Link
